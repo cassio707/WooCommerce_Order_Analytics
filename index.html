@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>داشبورد فروش ووکامرس</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- XLSX -->
+  <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+  <!-- Jalaali -->
+  <script src="https://cdn.jsdelivr.net/npm/jalaali-js@1.2.6/dist/jalaali.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Pinar', 'system-ui', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+
+  <!-- Load local Pinar font (put Pinar.woff2 in the same folder) -->
+  <style>
+    @font-face {
+      font-family: 'Pinar';
+      src: url('./Pinar.woff2') format('woff2');
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+  </style>
+</head>
+
+<body class="font-sans bg-gray-100 dark:bg-gray-900 p-6 transition-colors duration-200">
+  <div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- Controls -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-lg">
+      <div class="flex items-center justify-between gap-4 mb-4">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">داشبورد فروش ووکامرس</h1>
+        <button id="toggleTheme" class="bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-3 rounded">
+          حالت تیره/روشن
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input id="siteUrl" placeholder="آدرس سایت (مثل https://example.com)"
+               class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+        <input id="consumerKey" placeholder="Consumer Key"
+               class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+        <input id="consumerSecret" placeholder="Consumer Secret"
+               class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+
+        <select id="orderStatus"
+                class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+          <option value="">همه وضعیت‌ها</option>
+          <option value="completed">تکمیل‌شده</option>
+          <option value="processing">در حال پردازش</option>
+          <option value="on-hold">در انتظار</option>
+          <option value="pending">معلق</option>
+          <option value="cancelled">لغو شده</option>
+          <option value="refunded">مرجوع شده</option>
+          <option value="failed">ناموفق</option>
+        </select>
+
+        <div class="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <select id="dateFilterType"
+                  class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            <option value="preset">بازه پیش‌فرض</option>
+            <option value="custom">بازه سفارشی (شمسی)</option>
+          </select>
+          <select id="dateFilter"
+                  class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            <option value="today">امروز</option>
+            <option value="week">هفتهٔ جاری</option>
+            <option value="1">۱ ماه اخیر</option>
+            <option value="3">۳ ماه اخیر</option>
+            <option value="6">۶ ماه اخیر</option>
+            <option value="12">۱ سال اخیر</option>
+            <option value="24">۲ سال اخیر</option>
+          </select>
+        </div>
+
+        <!-- Custom Jalali Range -->
+        <div id="customDateRange" class="hidden col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input id="startDateJalali" placeholder="تاریخ شروع (شمسی) مثل 1403/06/01"
+                 class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+          <input id="endDateJalali" placeholder="تاریخ پایان (شمسی) مثل 1403/06/31"
+                 class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+          <input type="date" id="startDate"
+                 class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+          <input type="date" id="endDate"
+                 class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+          <p class="md:col-span-2 text-xs text-gray-600 dark:text-gray-400">
+            اگر تاریخ شمسی بدهید، خودکار به میلادی تبدیل و برای API استفاده می‌شود.
+          </p>
+        </div>
+      </div>
+
+      <!-- Report options -->
+      <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <label class="inline-flex items-center gap-2 text-gray-800 dark:text-gray-200">
+          <input id="optHourly" type="checkbox" class="w-4 h-4" checked>
+          <span>نمایش آمار ساعتی</span>
+        </label>
+        <label class="inline-flex items-center gap-2 text-gray-800 dark:text-gray-200">
+          <input id="optItems" type="checkbox" class="w-4 h-4" checked>
+          <span>فروش اقلام (همه آیتم‌ها)</span>
+        </label>
+        <label class="inline-flex items-center gap-2 text-gray-800 dark:text-gray-200">
+          <input id="optDiscounts" type="checkbox" class="w-4 h-4" checked>
+          <span>تخفیف‌های داده‌شده</span>
+        </label>
+      </div>
+
+      <div class="mt-4 flex flex-wrap gap-3">
+        <button id="fetchOrders"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">
+          دریافت آمار
+        </button>
+        <button id="exportJSON"
+                class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded">
+          خروجی JSON
+        </button>
+        <button id="exportExcel"
+                class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded">
+          خروجی Excel
+        </button>
+        <button id="clearFilters"
+                class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded">
+          پاک‌سازی
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="relative pt-1 hidden" id="progressContainer">
+      <div class="flex mb-2 items-center justify-between">
+        <div class="text-xs font-semibold inline-block text-blue-600 dark:text-blue-400" id="progressText">در حال دریافت…</div>
+        <div class="text-xs font-semibold inline-block text-blue-600 dark:text-blue-400" id="progressPercent">0%</div>
+      </div>
+      <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200 dark:bg-blue-900">
+        <div id="progressBar"
+             class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-600 transition-all duration-200"
+             style="width: 0%"></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div id="statsContainer" class="hidden space-y-6">
+
+      <!-- Overview Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="overviewStats"></div>
+
+      <!-- Daily (Jalali) -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-lg">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">فروش روزانه (شمسی)</h2>
+          <span id="amountUnit" class="text-sm text-gray-600 dark:text-gray-400"></span>
+        </div>
+        <!-- Chart -->
+        <div class="mb-4">
+          <canvas id="dailyChart" height="120"></canvas>
+        </div>
+        <!-- Table -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="text-gray-700 dark:text-gray-300">
+              <tr>
+                <th class="text-right p-2">تاریخ (ج)</th>
+                <th class="text-right p-2">تعداد سفارش</th>
+                <th class="text-right p-2">جمع مبلغ</th>
+                <th class="text-right p-2">میانگین سفارش</th>
+              </tr>
+            </thead>
+            <tbody id="dailyTable" class="text-gray-900 dark:text-gray-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Hourly -->
+      <div id="panelHourly" class="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-lg">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">فروش ساعتی (۰–۲۳)</h2>
+        <!-- Chart -->
+        <div class="mb-4">
+          <canvas id="hourlyChart" height="120"></canvas>
+        </div>
+        <!-- Table -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="text-gray-700 dark:text-gray-300">
+              <tr>
+                <th class="text-right p-2">ساعت</th>
+                <th class="text-right p-2">تعداد سفارش</th>
+                <th class="text-right p-2">جمع مبلغ</th>
+              </tr>
+            </thead>
+            <tbody id="hourlyTable" class="text-gray-900 dark:text-gray-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Items (All) -->
+      <div id="panelItems" class="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-lg">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">فروش اقلام (همه آیتم‌ها)</h2>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="text-gray-700 dark:text-gray-300">
+              <tr>
+                <th class="text-right p-2">نام محصول</th>
+                <th class="text-right p-2">SKU</th>
+                <th class="text-right p-2">تعداد</th>
+                <th class="text-right p-2">مبلغ</th>
+              </tr>
+            </thead>
+            <tbody id="itemsTable" class="text-gray-900 dark:text-gray-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Discounts -->
+      <div id="panelDiscounts" class="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-lg">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">تخفیف‌های داده‌شده</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3" id="discountCards"></div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="text-gray-700 dark:text-gray-300">
+              <tr>
+                <th class="text-right p-2">تاریخ (ج)</th>
+                <th class="text-right p-2">مجموع تخفیف</th>
+              </tr>
+            </thead>
+            <tbody id="discountsDailyTable" class="text-gray-900 dark:text-gray-100"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
