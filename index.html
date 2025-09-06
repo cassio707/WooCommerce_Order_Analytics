@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl" class="dark">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>داشبورد فروش ووکامرس</title>
 
   <!-- Tailwind -->
@@ -44,21 +45,21 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-lg">
       <div class="flex items-center justify-between gap-4 mb-4">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">داشبورد فروش ووکامرس</h1>
-        <button id="toggleTheme" class="bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-3 rounded">
+        <button id="toggleTheme"
+          class="bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-3 rounded">
           حالت تیره/روشن
         </button>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <input id="siteUrl" placeholder="آدرس سایت (مثل https://example.com)"
-               class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+          class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
         <input id="consumerKey" placeholder="Consumer Key"
-               class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+          class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
         <input id="consumerSecret" placeholder="Consumer Secret"
-               class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+          class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
 
-        <select id="orderStatus"
-                class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        <select id="orderStatus" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
           <option value="">همه وضعیت‌ها</option>
           <option value="completed">تکمیل‌شده</option>
           <option value="processing">در حال پردازش</option>
@@ -70,13 +71,11 @@
         </select>
 
         <div class="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
-          <select id="dateFilterType"
-                  class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+          <select id="dateFilterType" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
             <option value="preset">بازه پیش‌فرض</option>
             <option value="custom">بازه سفارشی (شمسی)</option>
           </select>
-          <select id="dateFilter"
-                  class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+          <select id="dateFilter" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
             <option value="today">امروز</option>
             <option value="week">هفتهٔ جاری</option>
             <option value="1">۱ ماه اخیر</option>
@@ -90,13 +89,13 @@
         <!-- Custom Jalali Range -->
         <div id="customDateRange" class="hidden col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
           <input id="startDateJalali" placeholder="تاریخ شروع (شمسی) مثل 1403/06/01"
-                 class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+            class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
           <input id="endDateJalali" placeholder="تاریخ پایان (شمسی) مثل 1403/06/31"
-                 class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+            class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
           <input type="date" id="startDate"
-                 class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+            class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
           <input type="date" id="endDate"
-                 class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"/>
+            class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
           <p class="md:col-span-2 text-xs text-gray-600 dark:text-gray-400">
             اگر تاریخ شمسی بدهید، خودکار به میلادی تبدیل و برای API استفاده می‌شود.
           </p>
@@ -120,20 +119,16 @@
       </div>
 
       <div class="mt-4 flex flex-wrap gap-3">
-        <button id="fetchOrders"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">
+        <button id="fetchOrders" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">
           دریافت آمار
         </button>
-        <button id="exportJSON"
-                class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded">
+        <button id="exportJSON" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded">
           خروجی JSON
         </button>
-        <button id="exportExcel"
-                class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded">
+        <button id="exportExcel" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded">
           خروجی Excel
         </button>
-        <button id="clearFilters"
-                class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded">
+        <button id="clearFilters" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded">
           پاک‌سازی
         </button>
       </div>
@@ -142,13 +137,14 @@
     <!-- Progress -->
     <div class="relative pt-1 hidden" id="progressContainer">
       <div class="flex mb-2 items-center justify-between">
-        <div class="text-xs font-semibold inline-block text-blue-600 dark:text-blue-400" id="progressText">در حال دریافت…</div>
+        <div class="text-xs font-semibold inline-block text-blue-600 dark:text-blue-400" id="progressText">در حال
+          دریافت…</div>
         <div class="text-xs font-semibold inline-block text-blue-600 dark:text-blue-400" id="progressPercent">0%</div>
       </div>
       <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200 dark:bg-blue-900">
         <div id="progressBar"
-             class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-600 transition-all duration-200"
-             style="width: 0%"></div>
+          class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-600 transition-all duration-200"
+          style="width: 0%"></div>
       </div>
     </div>
 
@@ -158,40 +154,12 @@
       <!-- Overview Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="overviewStats"></div>
 
-      <!-- Daily (Jalali) -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-lg">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">فروش روزانه (شمسی)</h2>
-          <span id="amountUnit" class="text-sm text-gray-600 dark:text-gray-400"></span>
-        </div>
-        <!-- Chart -->
-        <div class="mb-4">
-          <canvas id="dailyChart" height="120"></canvas>
-        </div>
-        <!-- Table -->
-        <div class="overflow-x-auto">
-          <table class="min-w-full text-sm">
-            <thead class="text-gray-700 dark:text-gray-300">
-              <tr>
-                <th class="text-right p-2">تاریخ (ج)</th>
-                <th class="text-right p-2">تعداد سفارش</th>
-                <th class="text-right p-2">جمع مبلغ</th>
-                <th class="text-right p-2">میانگین سفارش</th>
-              </tr>
-            </thead>
-            <tbody id="dailyTable" class="text-gray-900 dark:text-gray-100"></tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- Hourly -->
       <div id="panelHourly" class="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-lg">
         <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">فروش ساعتی (۰–۲۳)</h2>
-        <!-- Chart -->
         <div class="mb-4">
           <canvas id="hourlyChart" height="120"></canvas>
         </div>
-        <!-- Table -->
         <div class="overflow-x-auto">
           <table class="min-w-full text-sm">
             <thead class="text-gray-700 dark:text-gray-300">
@@ -245,4 +213,5 @@
 
   <script src="./app.js"></script>
 </body>
+
 </html>

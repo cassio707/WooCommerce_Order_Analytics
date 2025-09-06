@@ -1,4 +1,4 @@
-/* ===== WooCommerce Stats Dashboard – Now with Charts (Daily & Hourly) ===== */
+/* ===== WooCommerce Stats Dashboard – Hourly/Items/Discounts (Daily panel removed) ===== */
 
 const els = {
     siteUrl: document.getElementById('siteUrl'),
@@ -31,10 +31,8 @@ const els = {
 
     statsContainer: document.getElementById('statsContainer'),
     overviewStats: document.getElementById('overviewStats'),
-    amountUnit: document.getElementById('amountUnit'),
 
-    // tables
-    dailyTable: document.getElementById('dailyTable'),
+    // Hourly / Items / Discounts tables
     panelHourly: document.getElementById('panelHourly'),
     hourlyTable: document.getElementById('hourlyTable'),
     panelItems: document.getElementById('panelItems'),
@@ -44,7 +42,6 @@ const els = {
     discountsDailyTable: document.getElementById('discountsDailyTable'),
 
     // charts
-    dailyChart: document.getElementById('dailyChart'),
     hourlyChart: document.getElementById('hourlyChart'),
 };
 
@@ -52,7 +49,6 @@ let lastOrders = [];
 let lastStats = null;
 let lastCurrency = ''; // IRT/IRR/...
 
-let dailyChartInstance = null;
 let hourlyChartInstance = null;
 
 /* ---------- Theme ---------- */
@@ -63,8 +59,6 @@ let hourlyChartInstance = null;
     els.toggleTheme.addEventListener('click', () => {
         root.classList.toggle('dark');
         localStorage.setItem('theme', root.classList.contains('dark') ? 'dark' : 'light');
-        // Force Chart.js to update for better contrast (no color change needed)
-        if (dailyChartInstance) dailyChartInstance.update('none');
         if (hourlyChartInstance) hourlyChartInstance.update('none');
     });
 })();
@@ -85,10 +79,7 @@ els.clearFilters.addEventListener('click', () => {
 });
 
 /* ---------- Helpers: Dates ---------- */
-function toISOUTC(d) {
-    if (!d) return null;
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString();
-}
+function toISOUTC(d) { if (!d) return null; return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString(); }
 function toJalaliString(localDate) {
     const gY = localDate.getFullYear(), gM = localDate.getMonth() + 1, gD = localDate.getDate();
     const j = window.jalaali.toJalaali(gY, gM, gD);
@@ -106,14 +97,11 @@ function buildLocalDateFromJalali(jStr, startOfDay) {
     const g = window.jalaali.toGregorian(jy, jm, jd);
     return new Date(g.gy, g.gm - 1, g.gd, startOfDay ? 0 : 23, startOfDay ? 0 : 59, startOfDay ? 0 : 59, startOfDay ? 0 : 999);
 }
-function startOfToday() {
-    const d = new Date(); d.setHours(0, 0, 0, 0); return d;
-}
+function startOfToday() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
 function startOfWeekSaturday() {
-    // هفتهٔ جاری: شنبه تا جمعه (شنبه = 6)
     const d = new Date();
-    const dow = d.getDay(); // 0=Sun .. 6=Sat
-    const diff = (dow - 6 + 7) % 7; // فاصله تا شنبه
+    const dow = d.getDay(); // 0=Sun..6=Sat
+    const diff = (dow - 6 + 7) % 7;
     const s = new Date(d); s.setDate(d.getDate() - diff); s.setHours(0, 0, 0, 0);
     return s;
 }
@@ -122,15 +110,9 @@ function buildDateParams() {
         const now = new Date();
         let startLocal;
         const v = els.dateFilter.value;
-        if (v === 'today') {
-            startLocal = startOfToday();
-        } else if (v === 'week') {
-            startLocal = startOfWeekSaturday();
-        } else {
-            const months = Number(v || '1');
-            startLocal = new Date(); startLocal.setMonth(startLocal.getMonth() - months);
-            startLocal.setHours(0, 0, 0, 0);
-        }
+        if (v === 'today') startLocal = startOfToday();
+        else if (v === 'week') startLocal = startOfWeekSaturday();
+        else { const months = Number(v || '1'); startLocal = new Date(); startLocal.setMonth(startLocal.getMonth() - months); startLocal.setHours(0, 0, 0, 0); }
         return { afterISO: toISOUTC(startLocal), beforeISO: toISOUTC(now) };
     }
     // custom (prefer Jalali)
@@ -145,26 +127,15 @@ function buildDateParams() {
 }
 
 /* ---------- Helpers: Numbers & Currency ---------- */
-function faNum(n, opts) {
-    if (!Number.isFinite(n)) n = 0;
-    return n.toLocaleString('fa-IR', opts || { maximumFractionDigits: 0 });
-}
+function faNum(n, opts) { if (!Number.isFinite(n)) n = 0; return n.toLocaleString('fa-IR', opts || { maximumFractionDigits: 0 }); }
 function detectCurrency(orders) {
     const freq = {};
-    for (const o of orders) {
-        const c = (o.currency || '').toUpperCase();
-        if (!c) continue; freq[c] = (freq[c] || 0) + 1;
-    }
+    for (const o of orders) { const c = (o.currency || '').toUpperCase(); if (!c) continue; freq[c] = (freq[c] || 0) + 1; }
     let best = ''; let max = -1;
     for (const k in freq) if (freq[k] > max) { max = freq[k]; best = k; }
     return best || 'IRR';
 }
-function currencyLabel(code) {
-    if (!code) return '';
-    if (code.toUpperCase() === 'IRT') return 'تومان';
-    if (code.toUpperCase() === 'IRR') return 'ریال';
-    return code.toUpperCase();
-}
+function currencyLabel(code) { if (!code) return ''; if (code.toUpperCase() === 'IRT') return 'تومان'; if (code.toUpperCase() === 'IRR') return 'ریال'; return code.toUpperCase(); }
 function formatMoneyFA(amount, code) {
     const decimals = (code === 'IRR' || code === 'IRT') ? 0 : 2;
     return `${amount.toLocaleString('fa-IR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} ${currencyLabel(code)}`;
@@ -235,15 +206,14 @@ function computeStats(orders) {
         avgOrder: 0,
         uniqueCustomers: 0,
 
-        daily: {},    // Jalali -> {count, amount}
-        hourly: {},   // 0..23 -> {count, amount}
-        products: {}, // key -> {name, sku, qty, amount}
+        daily: {},    // نگه می‌داریم تا «پرفروش‌ترین روز» و تخفیف روزانه کار کند
+        hourly: {},   // 0..23
+        products: {},
 
-        // Discounts
-        discountDaily: {}, // Jalali -> amount
+        discountDaily: {},
         totalDiscount: 0,
-        grossItems: 0,  // sum of item subtotals
-        netItems: 0,    // sum of item totals
+        grossItems: 0,
+        netItems: 0,
     };
     const seen = new Set();
     for (let h = 0; h < 24; h++) stats.hourly[h] = { count: 0, amount: 0 };
@@ -274,14 +244,14 @@ function computeStats(orders) {
             stats.hourly[hour].amount += orderTotal;
         }
 
-        // items aggregation + discounts
+        // items + discounts
         let lineSubtotalSum = 0;
         let lineTotalSum = 0;
         let lineDiscountSum = 0;
 
         (o.line_items || []).forEach(it => {
-            const subtotal = parseFloat(it.subtotal || '0') || 0; // before discount
-            const total = parseFloat(it.total || '0') || 0;       // after discount
+            const subtotal = parseFloat(it.subtotal || '0') || 0;
+            const total = parseFloat(it.total || '0') || 0;
             const qty = Number(it.quantity || 0) || 0;
 
             lineSubtotalSum += subtotal;
@@ -340,13 +310,11 @@ function renderOverview(stats) {
       ${sub ? `<div class="text-xs text-gray-500 dark:text-gray-400 mt-1">${sub}</div>` : ''}
     </div>
   `;
-    // main
     els.overviewStats.insertAdjacentHTML('beforeend', card('تعداد سفارش', faNum(stats.totalOrders)));
     els.overviewStats.insertAdjacentHTML('beforeend', card('جمع فروش', formatMoneyFA(stats.totalAmount, lastCurrency)));
     els.overviewStats.insertAdjacentHTML('beforeend', card('میانگین هر سفارش', formatMoneyFA(stats.avgOrder, lastCurrency)));
     els.overviewStats.insertAdjacentHTML('beforeend', card('مشتریان یکتا', faNum(stats.uniqueCustomers)));
 
-    // discounts summary
     const grossLbl = formatMoneyFA(stats.grossItems, lastCurrency);
     const discLbl = formatMoneyFA(stats.totalDiscount, lastCurrency);
     const netLbl = formatMoneyFA(stats.grossItems - stats.totalDiscount, lastCurrency);
@@ -354,7 +322,6 @@ function renderOverview(stats) {
     els.overviewStats.insertAdjacentHTML('beforeend', card('جمع اقلام قبل از تخفیف', grossLbl));
     els.overviewStats.insertAdjacentHTML('beforeend', card('جمع اقلام پس از تخفیف', netLbl));
 
-    // best hour/day
     const bh = getBestHour(stats);
     const bd = getBestDay(stats);
     els.overviewStats.insertAdjacentHTML('beforeend',
@@ -363,40 +330,9 @@ function renderOverview(stats) {
         card('پرفروش‌ترین روز (ج)', `${bd.date} — ${formatMoneyFA(bd.amount, lastCurrency)}`));
 }
 
-function renderDaily(stats) {
-    els.amountUnit.textContent = `واحد مبلغ: ${currencyLabel(lastCurrency)}`;
-    const best = getBestDay(stats);
-    const entries = Object.entries(stats.daily).map(([date, v]) => ({ date, ...v })).sort((a, b) => (a.date < b.date ? -1 : 1));
-
-    // table
-    const rows = entries.map(r => {
-        const isBest = r.date === best.date;
-        const highlight = isBest ? 'bg-amber-50 dark:bg-amber-900/20 font-semibold' : '';
-        const star = isBest ? ' ⭐' : '';
-        return `
-      <tr class="border-b border-gray-200 dark:border-gray-700 ${highlight}">
-        <td class="p-2">${r.date}${star}</td>
-        <td class="p-2">${faNum(r.count)}</td>
-        <td class="p-2">${formatMoneyFA(r.amount, lastCurrency)}</td>
-        <td class="p-2">${formatMoneyFA(r.count ? r.amount / r.count : 0, lastCurrency)}</td>
-      </tr>
-    `;
-    });
-    els.dailyTable.innerHTML = rows.join('') || `<tr><td class="p-2" colspan="4">—</td></tr>`;
-
-    // chart
-    const labels = entries.map(e => e.date);
-    const amounts = entries.map(e => e.amount);
-    const counts = entries.map(e => e.count);
-    const bestIndex = labels.indexOf(best.date);
-
-    updateDailyChart(labels, amounts, counts, bestIndex);
-}
-
 function renderHourly(stats) {
     const best = getBestHour(stats);
 
-    // table
     const rows = [];
     for (let h = 0; h < 24; h++) {
         const r = stats.hourly[h] || { count: 0, amount: 0 };
@@ -414,14 +350,13 @@ function renderHourly(stats) {
     els.hourlyTable.innerHTML = rows.join('');
     els.panelHourly.classList.toggle('hidden', !els.optHourly.checked);
 
-    // chart
     const labels = Array.from({ length: 24 }, (_, i) => i);
     const amounts = labels.map(h => stats.hourly[h]?.amount || 0);
     updateHourlyChart(labels, amounts, best.h);
 }
 
 function renderItems(stats) {
-    const list = Object.values(stats.products).sort((a, b) => b.amount - a.amount); // همهٔ آیتم‌ها
+    const list = Object.values(stats.products).sort((a, b) => b.amount - a.amount);
     const rows = list.map(p => `
     <tr class="border-b border-gray-200 dark:border-gray-700">
       <td class="p-2">${escapeHTML(p.name)}</td>
@@ -435,7 +370,6 @@ function renderItems(stats) {
 }
 
 function renderDiscounts(stats) {
-    // cards
     els.discountCards.innerHTML = '';
     const card = (t, v) => `
     <div class="p-4 rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-100 dark:border-gray-700">
@@ -447,7 +381,6 @@ function renderDiscounts(stats) {
     els.discountCards.insertAdjacentHTML('beforeend', card('جمع اقلام قبل از تخفیف', formatMoneyFA(stats.grossItems, lastCurrency)));
     els.discountCards.insertAdjacentHTML('beforeend', card('جمع اقلام پس از تخفیف', formatMoneyFA(stats.grossItems - stats.totalDiscount, lastCurrency)));
 
-    // daily table
     const rows = Object.entries(stats.discountDaily)
         .map(([date, amt]) => ({ date, amt }))
         .sort((a, b) => (a.date < b.date ? -1 : 1))
@@ -462,87 +395,7 @@ function renderDiscounts(stats) {
 }
 function escapeHTML(s) { return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
 
-/* ---------- Charts ---------- */
-function updateDailyChart(labels, amounts, counts, bestIndex) {
-    const ctx = els.dailyChart.getContext('2d');
-
-    // build highlight arrays
-    const barBg = amounts.map((_, i) => i === bestIndex ? 'rgba(234,179,8,0.5)' : 'rgba(59,130,246,0.4)');
-    const barBorder = amounts.map((_, i) => i === bestIndex ? 'rgba(234,179,8,1)' : 'rgba(59,130,246,1)');
-    const pointRadius = counts.map((_, i) => i === bestIndex ? 4 : 2);
-
-    const data = {
-        labels,
-        datasets: [
-            {
-                type: 'bar',
-                label: 'مبلغ فروش',
-                data: amounts,
-                backgroundColor: barBg,
-                borderColor: barBorder,
-                borderWidth: 1,
-                yAxisID: 'yAmount',
-            },
-            {
-                type: 'line',
-                label: 'تعداد سفارش',
-                data: counts,
-                tension: 0.3,
-                borderWidth: 2,
-                borderColor: 'rgba(16,185,129,1)',
-                pointBackgroundColor: 'rgba(16,185,129,1)',
-                pointRadius,
-                yAxisID: 'yCount',
-            }
-        ]
-    };
-
-    const options = {
-        responsive: true,
-        maintainAspectRatio: false,
-        locale: 'fa-IR',
-        plugins: {
-            legend: { labels: { font: { family: 'Pinar' } } },
-            tooltip: {
-                callbacks: {
-                    label: (ctx) => {
-                        if (ctx.dataset.yAxisID === 'yAmount') {
-                            return ` مبلغ: ${formatMoneyFA(ctx.parsed.y || 0, lastCurrency)}`;
-                        } else {
-                            return ` تعداد: ${faNum(ctx.parsed.y || 0)}`;
-                        }
-                    },
-                    title: (items) => `تاریخ: ${items[0].label}`
-                }
-            }
-        },
-        scales: {
-            x: { ticks: { font: { family: 'Pinar' } } },
-            yAmount: {
-                position: 'left',
-                ticks: {
-                    callback: (v) => formatMoneyFA(v, lastCurrency),
-                    font: { family: 'Pinar' }
-                },
-                grid: { drawOnChartArea: true }
-            },
-            yCount: {
-                position: 'right',
-                grid: { drawOnChartArea: false },
-                ticks: { callback: (v) => faNum(v), font: { family: 'Pinar' } }
-            }
-        }
-    };
-
-    if (dailyChartInstance) {
-        dailyChartInstance.data = data;
-        dailyChartInstance.options = options;
-        dailyChartInstance.update();
-    } else {
-        dailyChartInstance = new Chart(ctx, { data, options });
-    }
-}
-
+/* ---------- Charts (Hourly only) ---------- */
 function updateHourlyChart(labels, amounts, bestHour) {
     const ctx = els.hourlyChart.getContext('2d');
 
@@ -575,9 +428,7 @@ function updateHourlyChart(labels, amounts, bestHour) {
         },
         scales: {
             x: { ticks: { font: { family: 'Pinar' } } },
-            y: {
-                ticks: { callback: (v) => formatMoneyFA(v, lastCurrency), font: { family: 'Pinar' } }
-            }
+            y: { ticks: { callback: (v) => formatMoneyFA(v, lastCurrency), font: { family: 'Pinar' } } }
         }
     };
 
@@ -613,12 +464,6 @@ function exportExcel(orders, stats) {
     ]);
     XLSX.utils.book_append_sheet(wb, wsOverview, 'Overview');
 
-    // Daily sales
-    const dailyRows = Object.entries(stats.daily).map(([date, v]) => ({
-        'تاریخ (ج)': date, 'تعداد سفارش': v.count, 'جمع مبلغ': v.amount, 'میانگین سفارش': v.count ? v.amount / v.count : 0
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dailyRows), 'Daily (Jalali)');
-
     // Hourly
     const hourlyRows = Object.entries(stats.hourly).map(([h, v]) => ({
         'ساعت': Number(h), 'تعداد سفارش': v.count, 'جمع مبلغ': v.amount
@@ -630,7 +475,7 @@ function exportExcel(orders, stats) {
         .map(p => ({ 'نام': p.name, 'SKU': p.sku, 'تعداد': p.qty, 'مبلغ': p.amount }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(itemsRows), 'Items');
 
-    // Discounts daily
+    // Discounts daily (شمسی باقیست)
     const discRows = Object.entries(stats.discountDaily).map(([date, amt]) => ({ 'تاریخ (ج)': date, 'مجموع تخفیف': amt }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(discRows), 'Discounts (Daily)');
 
@@ -653,7 +498,6 @@ els.fetchOrders.addEventListener('click', async () => {
 
         lastStats = computeStats(lastOrders);
         renderOverview(lastStats);
-        renderDaily(lastStats);
         renderHourly(lastStats);
         renderItems(lastStats);
         renderDiscounts(lastStats);
