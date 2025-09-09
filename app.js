@@ -1,4 +1,4 @@
-/* ===== WooCommerce Stats Dashboard – Hourly/Items/Discounts (Daily panel removed) ===== */
+/* ===== WooCommerce Stats Dashboard – Hourly/Items/Discounts + First/Last Order Panel ===== */
 
 const els = {
     siteUrl: document.getElementById('siteUrl'),
@@ -32,7 +32,14 @@ const els = {
     statsContainer: document.getElementById('statsContainer'),
     overviewStats: document.getElementById('overviewStats'),
 
-    // Hourly / Items / Discounts tables
+    // First/Last order panel elements
+    panelFirstLast: document.getElementById('panelFirstLast'),
+    firstOrderNumber: document.getElementById('firstOrderNumber'),
+    firstOrderDate: document.getElementById('firstOrderDate'),
+    lastOrderNumber: document.getElementById('lastOrderNumber'),
+    lastOrderDate: document.getElementById('lastOrderDate'),
+
+    // Hourly / Items / Discounts panels & tables
     panelHourly: document.getElementById('panelHourly'),
     hourlyTable: document.getElementById('hourlyTable'),
     panelItems: document.getElementById('panelItems'),
@@ -206,7 +213,7 @@ function computeStats(orders) {
         avgOrder: 0,
         uniqueCustomers: 0,
 
-        daily: {},    // نگه می‌داریم تا «پرفروش‌ترین روز» و تخفیف روزانه کار کند
+        daily: {},    // for best day & daily discounts
         hourly: {},   // 0..23
         products: {},
 
@@ -214,6 +221,10 @@ function computeStats(orders) {
         totalDiscount: 0,
         grossItems: 0,
         netItems: 0,
+
+        // NEW: first/last order info
+        firstOrder: null,
+        lastOrder: null,
     };
     const seen = new Set();
     for (let h = 0; h < 24; h++) stats.hourly[h] = { count: 0, amount: 0 };
@@ -242,6 +253,15 @@ function computeStats(orders) {
 
             stats.hourly[hour].count += 1;
             stats.hourly[hour].amount += orderTotal;
+
+            // NEW: first/last by date
+            const orderNumber = String(o.number || o.id || '—');
+            if (!stats.firstOrder || d < stats.firstOrder.date) {
+                stats.firstOrder = { id: o.id, number: orderNumber, date: d, dateJ: jKey };
+            }
+            if (!stats.lastOrder || d > stats.lastOrder.date) {
+                stats.lastOrder = { id: o.id, number: orderNumber, date: d, dateJ: jKey };
+            }
         }
 
         // items + discounts
@@ -328,6 +348,17 @@ function renderOverview(stats) {
         card('پرفروش‌ترین ساعت', `${faNum(bh.h)} — ${formatMoneyFA(bh.amount, lastCurrency)}`));
     els.overviewStats.insertAdjacentHTML('beforeend',
         card('پرفروش‌ترین روز (ج)', `${bd.date} — ${formatMoneyFA(bd.amount, lastCurrency)}`));
+}
+
+function renderFirstLast(stats) {
+    const hasData = Boolean(stats && (stats.firstOrder || stats.lastOrder));
+    els.panelFirstLast.classList.toggle('hidden', !hasData);
+
+    els.firstOrderNumber.textContent = stats.firstOrder?.number || '—';
+    els.firstOrderDate.textContent = stats.firstOrder ? `تاریخ (ج): ${stats.firstOrder.dateJ}` : '';
+
+    els.lastOrderNumber.textContent = stats.lastOrder?.number || '—';
+    els.lastOrderDate.textContent = stats.lastOrder ? `تاریخ (ج): ${stats.lastOrder.dateJ}` : '';
 }
 
 function renderHourly(stats) {
@@ -461,6 +492,11 @@ function exportExcel(orders, stats) {
         { شاخص: 'جمع اقلام قبل از تخفیف', مقدار: stats.grossItems },
         { شاخص: 'جمع اقلام پس از تخفیف', مقدار: stats.grossItems - stats.totalDiscount },
         { شاخص: 'واحد مبلغ', مقدار: currencyLabel(lastCurrency) },
+        // NEW:
+        { شاخص: 'اولین کد سفارش', مقدار: (stats.firstOrder?.number || '') },
+        { شاخص: 'تاریخ اولین (ج)', مقدار: (stats.firstOrder?.dateJ || '') },
+        { شاخص: 'آخرین کد سفارش', مقدار: (stats.lastOrder?.number || '') },
+        { شاخص: 'تاریخ آخرین (ج)', مقدار: (stats.lastOrder?.dateJ || '') },
     ]);
     XLSX.utils.book_append_sheet(wb, wsOverview, 'Overview');
 
@@ -475,7 +511,7 @@ function exportExcel(orders, stats) {
         .map(p => ({ 'نام': p.name, 'SKU': p.sku, 'تعداد': p.qty, 'مبلغ': p.amount }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(itemsRows), 'Items');
 
-    // Discounts daily (شمسی باقیست)
+    // Discounts daily (شمسی)
     const discRows = Object.entries(stats.discountDaily).map(([date, amt]) => ({ 'تاریخ (ج)': date, 'مجموع تخفیف': amt }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(discRows), 'Discounts (Daily)');
 
@@ -498,6 +534,7 @@ els.fetchOrders.addEventListener('click', async () => {
 
         lastStats = computeStats(lastOrders);
         renderOverview(lastStats);
+        renderFirstLast(lastStats);   // NEW
         renderHourly(lastStats);
         renderItems(lastStats);
         renderDiscounts(lastStats);
